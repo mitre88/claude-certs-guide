@@ -1,26 +1,395 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Dirección estética: "Examination Room".
+  Papel cálido y tinta, tipografía editorial de alto contraste, reglas finas,
+  numerales enormes para los pesos de dominio. Nada de glass, nada de gradiente morado.
+*/
+
+@theme {
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-prose: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --paper: #f4f1ea;
+  --surface: #fffdf8;
+  --ink: #17150f;
+  --muted: #665f54;
+  --rule: #ddd6c8;
+  --clay: #a63c22;
+  --clay-bright: #b4462a;
+  --clay-wash: #f0e2da;
+  --verde: #1f4e4a;
+  --verde-wash: #dfeae7;
+  --carmin: #8e2b2b;
+  --carmin-wash: #f2dede;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #14130f;
+    --surface: #1c1a16;
+    --ink: #f0ede4;
+    --muted: #a39c8d;
+    --rule: #33302a;
+    --clay: #e0714c;
+    --clay-bright: #ef8763;
+    --clay-wash: #3a2019;
+    --verde: #7fc9b8;
+    --verde-wash: #17302c;
+    --carmin: #e08484;
+    --carmin-wash: #34191a;
+    color-scheme: dark;
   }
 }
 
+/* El toggle explícito del usuario gana en ambas direcciones. */
+:root[data-theme="dark"] {
+  --paper: #14130f;
+  --surface: #1c1a16;
+  --ink: #f0ede4;
+  --muted: #a39c8d;
+  --rule: #33302a;
+  --clay: #e0714c;
+  --clay-bright: #ef8763;
+  --clay-wash: #3a2019;
+  --verde: #7fc9b8;
+  --verde-wash: #17302c;
+  --carmin: #e08484;
+  --carmin-wash: #34191a;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --paper: #f4f1ea;
+  --surface: #fffdf8;
+  --ink: #17150f;
+  --muted: #665f54;
+  --rule: #ddd6c8;
+  --clay: #a63c22;
+  --clay-bright: #b4462a;
+  --clay-wash: #f0e2da;
+  --verde: #1f4e4a;
+  --verde-wash: #dfeae7;
+  --carmin: #8e2b2b;
+  --carmin-wash: #f2dede;
+  color-scheme: light;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-prose);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  background-image:
+    radial-gradient(ellipse 90rem 40rem at 50% -14rem, var(--clay-wash) 0%, transparent 68%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: var(--clay);
+  color: #fffdf8;
+}
+
+:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---------- primitivas ---------- */
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: "SOFT" 0, "WONK" 1, "opsz" 40;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.numeral {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "WONK" 1;
+  font-weight: 500;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 0.82;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  padding: 0.7rem 1.25rem;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 3px;
+  cursor: pointer;
+  transition:
+    transform 0.18s var(--ease-out-quint),
+    box-shadow 0.18s var(--ease-out-quint),
+    background 0.18s,
+    border-color 0.18s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -12px var(--ink);
+  background: var(--clay);
+  border-color: var(--clay);
+  color: #fffdf8;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--clay);
+  color: #fffdf8;
+  border-color: var(--clay);
+}
+
+/* ---------- prosa de estudio ---------- */
+
+.prose-study {
+  font-size: 1.0625rem;
+  line-height: 1.72;
+  color: var(--ink);
+}
+.prose-study > * + * {
+  margin-top: 1.1em;
+}
+.prose-study h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-weight: 600;
+  font-variation-settings: "WONK" 1, "opsz" 60;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin-top: 0;
+  text-wrap: balance;
+}
+.prose-study h2 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  font-variation-settings: "WONK" 1, "opsz" 32;
+  letter-spacing: -0.01em;
+  margin-top: 2.6em;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--rule);
+  scroll-margin-top: 6rem;
+}
+.prose-study h3 {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clay);
+  margin-top: 2.2em;
+  font-weight: 600;
+}
+.prose-study h4 {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-top: 1.6em;
+}
+.prose-study ul,
+.prose-study ol {
+  padding-left: 1.1rem;
+}
+.prose-study ul {
+  list-style: none;
+  padding-left: 0;
+}
+.prose-study ul > li {
+  padding-left: 1.35rem;
+  position: relative;
+  margin-top: 0.5em;
+}
+.prose-study ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0.15rem;
+  top: 0.72em;
+  width: 0.42rem;
+  height: 1px;
+  background: var(--clay);
+}
+.prose-study ol {
+  list-style: decimal;
+}
+.prose-study ol > li {
+  margin-top: 0.5em;
+  padding-left: 0.3rem;
+}
+.prose-study ol > li::marker {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--clay);
+}
+.prose-study a {
+  color: var(--clay);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.prose-study blockquote {
+  border-left: 2px solid var(--clay);
+  padding: 0.2rem 0 0.2rem 1.1rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.prose-study code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: var(--clay-wash);
+  color: var(--clay);
+  padding: 0.12em 0.4em;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.prose-study pre {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  font-size: 0.83rem;
+  line-height: 1.6;
+}
+.prose-study pre code {
+  font-family: var(--font-mono);
+}
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.prose-study table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.prose-study th {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--muted);
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.prose-study td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.prose-study tbody tr:last-child td {
+  border-bottom: 0;
+}
+.prose-study hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2.5em 0;
+}
+
+/* Shiki lleva ambos temas inline; aquí elegimos cuál pinta. */
+html[data-theme="dark"] .shiki,
+html[data-theme="dark"] .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: transparent !important;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .shiki,
+  html:not([data-theme="light"]) .shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: transparent !important;
+  }
+}
+
+/* ---------- movimiento ---------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes grow-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.rise {
+  animation: rise 0.75s var(--ease-out-quint) both;
+}
+.bar-grow {
+  transform-origin: left;
+  animation: grow-bar 1s var(--ease-out-quint) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .btn:hover:not(:disabled) {
+    transform: none;
+  }
 }
