@@ -1,4 +1,18 @@
-import bundle from "@/content/bundle.json";
+import bundleEs from "@/content/bundle.es.json";
+import bundleEn from "@/content/bundle.en.json";
+import bundleFr from "@/content/bundle.fr.json";
+import bundleJa from "@/content/bundle.ja.json";
+import { CERT_FEES, type Lang } from "@/lib/i18n";
+
+/**
+ * SERVER-ONLY: este módulo importa los cuatro bundles (uno por idioma) y no
+ * debe importarse desde client components — arrastraría todos los bundles al
+ * JS del navegador. Los client components reciben datos ya recortados vía
+ * props desde sus páginas server.
+ *
+ * Nota de nombres: los campos *Es (nameEs, titleEs, explanationEs…) son
+ * históricos; en cada bundle llevan el texto del idioma de ese bundle.
+ */
 
 export type Question = {
   id: string;
@@ -29,6 +43,7 @@ export type Domain = {
   words: number;
   glossary: { en: string; es: string; meaning: string }[];
   checklist: string[];
+  translated: boolean;
 };
 
 export type Cert = {
@@ -60,66 +75,42 @@ export type Cert = {
   sources: string[];
   decoderHtml: string;
   logisticsHtml: string;
+  decoderTranslated: boolean;
+  logisticsTranslated: boolean;
+  factsTranslated: boolean;
   questions: Question[];
   blueprint: { n: number; weight: number; items: number }[];
   stats: { questions: number; official: number; practice: number; words: number };
 };
 
-const CERTS = (bundle as { certs: Cert[] }).certs;
+const BUNDLES: Record<Lang, { certs: Cert[] }> = {
+  es: bundleEs as unknown as { certs: Cert[] },
+  en: bundleEn as unknown as { certs: Cert[] },
+  fr: bundleFr as unknown as { certs: Cert[] },
+  ja: bundleJa as unknown as { certs: Cert[] },
+};
 
 /** Orden recomendado de ataque: barato → caro, Foundations antes que Professional. */
 export const ORDER = ["CCAO-F", "CCDV-F", "CCAR-F", "CCAR-P"];
 
-export const certs = (): Cert[] =>
-  [...CERTS].sort((a, b) => ORDER.indexOf(a.code) - ORDER.indexOf(b.code));
+export const certs = (lang: Lang): Cert[] =>
+  [...BUNDLES[lang].certs].sort((a, b) => ORDER.indexOf(a.code) - ORDER.indexOf(b.code));
 
-export const cert = (code: string): Cert | undefined =>
-  CERTS.find((c) => c.code.toLowerCase() === code.toLowerCase());
+export const cert = (lang: Lang, code: string): Cert | undefined =>
+  BUNDLES[lang].certs.find((c) => c.code.toLowerCase() === code.toLowerCase());
 
-export const domain = (code: string, n: number): Domain | undefined =>
-  cert(code)?.domains.find((d) => d.n === n);
+export const domain = (lang: Lang, code: string, n: number): Domain | undefined =>
+  cert(lang, code)?.domains.find((d) => d.n === n);
 
-export const questionsFor = (code: string, domainN?: number): Question[] => {
-  const qs = cert(code)?.questions ?? [];
+export const questionsFor = (lang: Lang, code: string, domainN?: number): Question[] => {
+  const qs = cert(lang, code)?.questions ?? [];
   return domainN ? qs.filter((q) => q.domain === domainN) : qs;
 };
 
-/** Metadatos editoriales que no vienen del exam guide. */
-export const CERT_META: Record<
-  string,
-  { role: string; tagline: string; feeNum: number; level: "Foundations" | "Professional" }
-> = {
-  "CCAO-F": {
-    role: "Associate",
-    tagline: "Usar Claude para trabajo real de negocio: prompts, evaluación del output, Projects, riesgo y escalamiento.",
-    feeNum: 99,
-    level: "Foundations",
-  },
-  "CCDV-F": {
-    role: "Developer",
-    tagline: "Construir contra la API: Messages, batches, caching, streaming, tools, MCP y agentes.",
-    feeNum: 125,
-    level: "Foundations",
-  },
-  "CCAR-F": {
-    role: "Architect",
-    tagline: "Diseñar sistemas agénticos de producción: orquestación, MCP, Claude Code, structured output, contexto.",
-    feeNum: 125,
-    level: "Foundations",
-  },
-  "CCAR-P": {
-    role: "Architect",
-    tagline: "Arquitectura de solución end-to-end: integración, evaluación, governance, stakeholders, ciclo de vida.",
-    feeNum: 175,
-    level: "Professional",
-  },
-};
+export const totalFee = () => ORDER.reduce((s, code) => s + (CERT_FEES[code] ?? 0), 0);
 
-export const totalFee = () =>
-  certs().reduce((s, c) => s + (CERT_META[c.code]?.feeNum ?? 0), 0);
-
-export const globalStats = () => {
-  const cs = certs();
+export const globalStats = (lang: Lang) => {
+  const cs = certs(lang);
   return {
     certs: cs.length,
     domains: cs.reduce((s, c) => s + c.domains.length, 0),
@@ -132,30 +123,3 @@ export const globalStats = () => {
     ),
   };
 };
-
-/** Construye un simulacro con la misma mezcla por dominio que el examen real. */
-export function buildMock(code: string, seed = Date.now()): Question[] {
-  const c = cert(code);
-  if (!c) return [];
-  let s = seed >>> 0;
-  const rand = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32);
-  const pick: Question[] = [];
-  for (const b of c.blueprint) {
-    const pool = c.questions.filter((q) => q.domain === b.n);
-    // Fisher-Yates con PRNG sembrado: el mismo seed reproduce el mismo examen.
-    const shuffled = [...pool];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    pick.push(...shuffled.slice(0, Math.min(b.items, shuffled.length)));
-  }
-  for (let i = pick.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [pick[i], pick[j]] = [pick[j], pick[i]];
-  }
-  return pick;
-}
-
-export const DONATE_URL =
-  process.env.NEXT_PUBLIC_STRIPE_DONATE_URL ?? "";

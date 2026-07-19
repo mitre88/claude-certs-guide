@@ -1,8 +1,10 @@
 "use client";
 
 import { useProgress } from "@/lib/progress";
+import { t, type Lang } from "@/lib/i18n";
 
-export function Checklist({ items, cert, domain }: { items: string[]; cert: string; domain: number }) {
+export function Checklist({ lang, items, cert, domain }: { lang: Lang; items: string[]; cert: string; domain: number }) {
+  const S = t(lang);
   const { progress, ready, toggleCheck } = useProgress();
   const checked = (i: number) => progress.checked.includes(`${cert}:${domain}:${i}`);
   const done = ready ? items.filter((_, i) => checked(i)).length : 0;
@@ -12,10 +14,10 @@ export function Checklist({ items, cert, domain }: { items: string[]; cert: stri
     <section className="card mt-14 p-6 sm:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <p className="label" style={{ color: "var(--clay)" }}>
-          Checklist de dominio
+          {S.checklist.kicker}
         </p>
         <p className="label" suppressHydrationWarning>
-          {done} / {items.length} {done === items.length && items.length > 0 ? "· dominado" : ""}
+          {S.checklist.progress(done, items.length)} {done === items.length && items.length > 0 ? S.checklist.mastered : ""}
         </p>
       </div>
 
@@ -28,7 +30,7 @@ export function Checklist({ items, cert, domain }: { items: string[]; cert: stri
       </div>
 
       <p className="mt-4 text-sm" style={{ color: "var(--muted)" }}>
-        Si no puedes marcar una casilla con honestidad, ahí está tu siguiente hora de estudio.
+        {S.checklist.hint}
       </p>
 
       <ul className="mt-6 space-y-1">

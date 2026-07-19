@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export function ThemeToggle() {
+export function ThemeToggle({ labelLight, labelDark }: { labelLight?: string; labelDark?: string }) {
   const [theme, setTheme] = useState<"light" | "dark" | null>(null);
 
   useEffect(() => {
@@ -17,13 +17,15 @@ export function ThemeToggle() {
     localStorage.setItem("theme", next);
   };
 
+  const label = theme === "dark" ? (labelLight ?? "Cambiar a modo claro") : (labelDark ?? "Cambiar a modo oscuro");
+
   return (
     <button
       onClick={toggle}
       className="grid h-8 w-8 place-items-center rounded border transition-colors hover:border-[var(--clay)] hover:text-[var(--clay)]"
       style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
-      aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-      title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+      aria-label={label}
+      title={label}
       suppressHydrationWarning
     >
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>

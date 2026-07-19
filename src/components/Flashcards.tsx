@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { t, type Lang } from "@/lib/i18n";
 
 type Card = { en: string; es: string; meaning: string };
 
@@ -8,7 +9,8 @@ type Card = { en: string; es: string; meaning: string };
  * El glosario del dominio, en modo tarjeta. El examen se rinde en inglés: la carta
  * muestra el término inglés y esconde el significado hasta que el estudiante se compromete.
  */
-export function Flashcards({ cards, certCode, domain }: { cards: Card[]; certCode: string; domain: number }) {
+export function Flashcards({ lang, cards, certCode, domain }: { lang: Lang; cards: Card[]; certCode: string; domain: number }) {
+  const S = t(lang);
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [mode, setMode] = useState<"cards" | "table">("cards");
@@ -22,7 +24,7 @@ export function Flashcards({ cards, certCode, domain }: { cards: Card[]; certCod
   return (
     <section className="mt-14">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b pb-4" style={{ borderColor: "var(--rule)" }}>
-        <h2 className="display text-[1.7rem]">Glosario del dominio</h2>
+        <h2 className="display text-[1.7rem]">{S.flashcards.title}</h2>
         <div className="flex gap-1">
           {(["cards", "table"] as const).map((m) => (
             <button
@@ -34,7 +36,7 @@ export function Flashcards({ cards, certCode, domain }: { cards: Card[]; certCod
                 background: mode === m ? "var(--clay-wash)" : "transparent",
               }}
             >
-              {m === "cards" ? "Tarjetas" : "Tabla"}
+              {m === "cards" ? S.flashcards.cards : S.flashcards.table}
             </button>
           ))}
         </div>
@@ -45,17 +47,17 @@ export function Flashcards({ cards, certCode, domain }: { cards: Card[]; certCod
           <button
             onClick={() => setFlipped(!flipped)}
             className="card mt-6 flex min-h-[15rem] w-full flex-col items-center justify-center p-8 text-center transition-transform duration-200 hover:-translate-y-0.5"
-            aria-label="Voltear tarjeta"
+            aria-label={S.flashcards.flipAria}
             key={`${i}-${flipped}`}
           >
             {!flipped ? (
               <div className="rise">
-                <p className="label">Término {i + 1} de {cards.length}</p>
+                <p className="label">{S.flashcards.termOf(i + 1, cards.length)}</p>
                 <p className="display mt-4 text-[clamp(1.8rem,4vw,2.6rem)]" lang="en">
                   {c.en}
                 </p>
                 <p className="label mt-6" style={{ color: "var(--clay)" }}>
-                  Clic para revelar
+                  {S.flashcards.reveal}
                 </p>
               </div>
             ) : (
@@ -88,7 +90,7 @@ export function Flashcards({ cards, certCode, domain }: { cards: Card[]; certCod
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                {["Término (EN)", "Español", "Qué significa"].map((h) => (
+                {[S.flashcards.colEn, S.flashcards.colLocal, S.flashcards.colMeaning].map((h) => (
                   <th
                     key={h}
                     className="label whitespace-nowrap border-b p-3 text-left"

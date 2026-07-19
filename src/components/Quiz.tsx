@@ -4,10 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Question } from "@/lib/content";
 import { useProgress, estimateScaled } from "@/lib/progress";
+import { t, type Lang } from "@/lib/i18n";
 
 type Mode = "practice" | "mock";
-
-const DIFF: Record<string, string> = { easy: "Fácil", medium: "Media", hard: "Difícil" };
 
 function shuffle<T>(arr: T[], seed: number): T[] {
   let s = seed >>> 0;
@@ -21,6 +20,7 @@ function shuffle<T>(arr: T[], seed: number): T[] {
 }
 
 export function Quiz({
+  lang,
   questions,
   mode,
   cert,
@@ -28,6 +28,7 @@ export function Quiz({
   passScaled = 720,
   domainTitles,
 }: {
+  lang: Lang;
   questions: Question[];
   mode: Mode;
   cert: string;
@@ -35,6 +36,7 @@ export function Quiz({
   passScaled?: number;
   domainTitles: Record<number, string>;
 }) {
+  const S = t(lang);
   const { recordAttempt, recordMock } = useProgress();
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<Record<string, string[]>>({});
@@ -101,7 +103,7 @@ export function Quiz({
   if (!total) {
     return (
       <p className="card p-8 text-center" style={{ color: "var(--muted)" }}>
-        No hay preguntas disponibles para esta selección.
+        {S.quiz.noQuestions}
       </p>
     );
   }
@@ -130,26 +132,24 @@ export function Quiz({
     return (
       <div className="rise space-y-8">
         <div className="card p-8 sm:p-10">
-          <p className="label">{mode === "mock" ? "Resultado del simulacro" : "Resultado de la sesión"}</p>
+          <p className="label">{mode === "mock" ? S.quiz.resultMock : S.quiz.resultPractice}</p>
           <div className="mt-5 flex flex-wrap items-end gap-x-10 gap-y-6">
             <div>
               <p className="numeral text-[clamp(3.5rem,10vw,6rem)]" style={{ color: passed ? "var(--verde)" : "var(--carmin)" }}>
                 {score.scaled}
               </p>
-              <p className="label mt-2">Escalado estimado · 100–1000</p>
+              <p className="label mt-2">{S.quiz.scaledLabel}</p>
             </div>
             <div>
               <p className="numeral text-[clamp(2rem,5vw,3rem)]">
                 {score.correct}
                 <span style={{ color: "var(--muted)" }}>/{total}</span>
               </p>
-              <p className="label mt-2">
-                Aciertos · {Math.round((score.correct / total) * 100)}% crudo
-              </p>
+              <p className="label mt-2">{S.quiz.hits(Math.round((score.correct / total) * 100))}</p>
             </div>
             <div>
               <p className="numeral text-[clamp(2rem,5vw,3rem)]">{mins}′</p>
-              <p className="label mt-2">Tiempo empleado</p>
+              <p className="label mt-2">{S.quiz.timeSpent}</p>
             </div>
           </div>
 
@@ -160,21 +160,17 @@ export function Quiz({
               background: passed ? "var(--verde-wash)" : "var(--carmin-wash)",
             }}
           >
-            <p className="font-bold">
-              {passed
-                ? `Por encima del corte (${passScaled}) en esta simulación.`
-                : `Por debajo del corte (${passScaled}) en esta simulación.`}
-            </p>
+            <p className="font-bold">{passed ? S.quiz.abovePass(passScaled) : S.quiz.belowPass(passScaled)}</p>
             <p className="mt-1.5" style={{ color: "var(--muted)" }}>
-              Anthropic no publica el mapeo de aciertos crudos a escala 100–1000, así que este número es una
-              <strong> estimación lineal</strong>, no una predicción. Trátalo como semáforo, no como veredicto: apunta a
-              ≥80% crudo antes de pagar el examen.
+              {S.quiz.scaledNote1}
+              <strong>{S.quiz.scaledNoteStrong}</strong>
+              {S.quiz.scaledNote2}
             </p>
           </div>
         </div>
 
         <div className="card p-8 sm:p-10">
-          <p className="label mb-6">Desglose por dominio</p>
+          <p className="label mb-6">{S.quiz.byDomain}</p>
           <div className="space-y-5">
             {Object.entries(score.byDomain)
               .sort(([a], [b]) => Number(a) - Number(b))
@@ -200,11 +196,11 @@ export function Quiz({
                     </div>
                     {weak && (
                       <Link
-                        href={`/cert/${cert}/dominio/${d}`}
+                        href={`/${lang}/cert/${cert}/dominio/${d}`}
                         className="label mt-1.5 inline-block no-underline"
                         style={{ color: "var(--clay)" }}
                       >
-                        → Repasar el capítulo del dominio {d}
+                        {S.quiz.reviewChapter(Number(d))}
                       </Link>
                     )}
                   </div>
@@ -214,7 +210,7 @@ export function Quiz({
         </div>
 
         <div className="card p-8 sm:p-10">
-          <p className="label mb-6">Revisión de las {total} preguntas</p>
+          <p className="label mb-6">{S.quiz.reviewTitle(total)}</p>
           <div className="space-y-8">
             {questions.map((qq, i) => (
               <Review key={qq.id} q={qq} n={i + 1} sel={picked[qq.id] ?? []} ok={isCorrect(qq, picked[qq.id])} />
@@ -224,10 +220,10 @@ export function Quiz({
 
         <div className="flex flex-wrap gap-3">
           <button className="btn" onClick={() => location.reload()}>
-            Otra ronda
+            {S.quiz.anotherRound}
           </button>
-          <Link href={`/cert/${cert}`} className="btn btn-ghost no-underline">
-            Volver a {cert}
+          <Link href={`/${lang}/cert/${cert}`} className="btn btn-ghost no-underline">
+            {S.quiz.backTo(cert)}
           </Link>
         </div>
       </div>
@@ -246,7 +242,7 @@ export function Quiz({
       {/* barra de estado */}
       <div className="card flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5">
         <p className="label">
-          {idx + 1} <span style={{ color: "var(--rule)" }}>/</span> {total}
+          {idx + 1} <span style={{ color: "var(--rule)" }}>{S.quiz.of}</span> {total}
         </p>
         <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: "var(--rule)", minWidth: "6rem" }}>
           <div
@@ -263,13 +259,13 @@ export function Quiz({
             {String(Math.floor(left / 60)).padStart(2, "0")}:{String(left % 60).padStart(2, "0")}
           </p>
         ) : null}
-        {mode === "mock" && <p className="label">{answered} respondidas</p>}
+        {mode === "mock" && <p className="label">{S.quiz.answered(answered)}</p>}
         <button
           onClick={() => setFlagged({ ...flagged, [q.id]: !flagged[q.id] })}
           className="label transition-colors hover:text-[var(--clay)]"
           style={{ color: flagged[q.id] ? "var(--clay)" : "var(--muted)" }}
         >
-          {flagged[q.id] ? "◆ Marcada" : "◇ Marcar"}
+          {flagged[q.id] ? S.quiz.flagged : S.quiz.flag}
         </button>
       </div>
 
@@ -286,22 +282,22 @@ export function Quiz({
             <span
               className="label rounded px-2 py-1"
               style={{ background: "var(--verde-wash)", color: "var(--verde)" }}
-              title="Pregunta de ejemplo publicada por Anthropic en el exam guide oficial"
+              title={S.quiz.officialTooltip}
             >
-              ★ Oficial
+              {S.quiz.officialBadge}
             </span>
           )}
-          <span className="label">{DIFF[q.difficulty] ?? q.difficulty}</span>
+          <span className="label">{S.quiz.diff[q.difficulty] ?? q.difficulty}</span>
           {q.type === "multiple-response" && (
             <span className="label" style={{ color: "var(--clay)" }}>
-              Respuesta múltiple
+              {S.quiz.multiResponse}
             </span>
           )}
         </div>
 
         {q.scenario && (
           <p className="label mt-5" style={{ color: "var(--muted)" }}>
-            Escenario: {q.scenario}
+            {S.quiz.scenario} {q.scenario}
           </p>
         )}
 
@@ -360,19 +356,19 @@ export function Quiz({
               className="label"
               style={{ color: isCorrect(q, sel) ? "var(--verde)" : "var(--carmin)" }}
             >
-              {isCorrect(q, sel) ? "Correcto" : `Incorrecto — la respuesta es ${q.correct.join(" + ")}`}
+              {isCorrect(q, sel) ? S.quiz.correct : S.quiz.incorrect(q.correct.join(" + "))}
             </p>
             <p className="mt-3 leading-relaxed">{q.explanationEs}</p>
 
             {q.officialRationale && (
               <p className="mt-3 border-l-2 pl-3.5 text-sm italic" style={{ borderColor: "var(--verde)", color: "var(--muted)" }} lang="en">
-                Justificación oficial de Anthropic: {q.officialRationale}
+                {S.quiz.officialRationaleLabel} {q.officialRationale}
               </p>
             )}
 
             {Object.keys(q.distractorsEs).length > 0 && (
               <div className="mt-5">
-                <p className="label mb-2.5">Por qué fallan las otras</p>
+                <p className="label mb-2.5">{S.quiz.whyFail}</p>
                 <ul className="space-y-2 text-sm">
                   {Object.entries(q.distractorsEs).map(([k, why]) => (
                     <li key={k} className="flex gap-2.5">
@@ -388,12 +384,12 @@ export function Quiz({
 
             {q.trap && (
               <p className="label mt-5" style={{ color: "var(--clay)" }}>
-                Trampa: {q.trap}
+                {S.quiz.trap} {q.trap}
               </p>
             )}
             {q.objective && (
               <p className="mt-2 text-xs" style={{ color: "var(--muted)" }} lang="en">
-                Objetivo medido: {q.objective}
+                {S.quiz.objective} {q.objective}
               </p>
             )}
           </div>
@@ -403,16 +399,16 @@ export function Quiz({
       {/* controles */}
       <div className="flex flex-wrap items-center gap-3">
         <button className="btn btn-ghost" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>
-          ← Anterior
+          {S.quiz.prev}
         </button>
 
         {mode === "practice" && !shown ? (
           <button className="btn" onClick={reveal} disabled={!sel.length}>
-            Comprobar
+            {S.quiz.check}
           </button>
         ) : (
           <button className="btn" onClick={next}>
-            {idx === total - 1 ? "Terminar y ver informe" : "Siguiente →"}
+            {idx === total - 1 ? S.quiz.finish : S.quiz.next}
           </button>
         )}
 
@@ -420,10 +416,10 @@ export function Quiz({
           <button
             className="btn btn-ghost ml-auto"
             onClick={() => {
-              if (confirm(`Entregar el simulacro con ${answered} de ${total} respondidas?`)) setDone(true);
+              if (confirm(S.quiz.confirmDeliver(answered, total))) setDone(true);
             }}
           >
-            Entregar
+            {S.quiz.deliver}
           </button>
         )}
       </div>
@@ -431,7 +427,7 @@ export function Quiz({
       {/* navegador de ítems (simulacro) */}
       {mode === "mock" && (
         <div className="card p-4">
-          <p className="label mb-3">Navegación</p>
+          <p className="label mb-3">{S.quiz.navigation}</p>
           <div className="flex flex-wrap gap-1.5">
             {questions.map((qq, i) => {
               const has = (picked[qq.id] ?? []).length > 0;
@@ -446,7 +442,7 @@ export function Quiz({
                     color: flagged[qq.id] ? "var(--clay)" : has ? "var(--ink)" : "var(--muted)",
                     fontWeight: i === idx ? 700 : 500,
                   }}
-                  aria-label={`Ir a la pregunta ${i + 1}${has ? " (respondida)" : ""}`}
+                  aria-label={S.quiz.goTo(i + 1, has)}
                 >
                   {flagged[qq.id] ? "◆" : i + 1}
                 </button>

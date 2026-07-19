@@ -6,20 +6,24 @@ import { useSearchParams } from "next/navigation";
 import type { Question } from "@/lib/content";
 import { Quiz } from "@/components/Quiz";
 import { useProgress, accuracy } from "@/lib/progress";
+import { t, type Lang } from "@/lib/i18n";
 
 type D = { n: number; titleEs: string; weight: number };
 
 function Setup({
+  lang,
   cert,
   certName,
   questions,
   domains,
 }: {
+  lang: Lang;
   cert: string;
   certName: string;
   questions: Question[];
   domains: D[];
 }) {
+  const S = t(lang);
   const sp = useSearchParams();
   const preset = sp.get("dominio");
   const { progress, ready } = useProgress();
@@ -57,12 +61,12 @@ function Setup({
     return (
       <>
         <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="display text-[clamp(1.6rem,3vw,2.2rem)]">Práctica · {cert}</h1>
+          <h1 className="display text-[clamp(1.6rem,3vw,2.2rem)]">{S.practice.titleRunning(cert)}</h1>
           <button className="label transition-colors hover:text-[var(--clay)]" onClick={() => setRunning(false)}>
-            ← Cambiar selección
+            {S.practice.changeSelection}
           </button>
         </div>
-        <Quiz questions={picked} mode="practice" cert={cert} domainTitles={titles} />
+        <Quiz lang={lang} questions={picked} mode="practice" cert={cert} domainTitles={titles} />
       </>
     );
   }
@@ -71,20 +75,20 @@ function Setup({
     setSelected((s) => (s.includes(n) ? s.filter((x) => x !== n) : [...s, n]));
 
   const FILTERS: { k: typeof only; label: string; count: number }[] = [
-    { k: "all", label: "Todas", count: questions.filter((q) => selected.includes(q.domain)).length },
+    { k: "all", label: S.practice.filters.all, count: questions.filter((q) => selected.includes(q.domain)).length },
     {
       k: "unseen",
-      label: "Sin ver",
+      label: S.practice.filters.unseen,
       count: questions.filter((q) => selected.includes(q.domain) && !seenIds.has(q.id)).length,
     },
     {
       k: "failed",
-      label: "Falladas",
+      label: S.practice.filters.failed,
       count: questions.filter((q) => selected.includes(q.domain) && failedIds.has(q.id)).length,
     },
     {
       k: "official",
-      label: "Oficiales",
+      label: S.practice.filters.official,
       count: questions.filter((q) => selected.includes(q.domain) && q.source === "official").length,
     },
   ];
@@ -93,23 +97,23 @@ function Setup({
     <>
       <header className="rise">
         <nav className="label mb-6">
-          <Link href={`/cert/${cert}`} className="no-underline hover:text-[var(--clay)]">
+          <Link href={`/${lang}/cert/${cert}`} className="no-underline hover:text-[var(--clay)]">
             {cert}
           </Link>
           <span className="mx-2" style={{ color: "var(--rule)" }}>
             /
           </span>
-          Práctica
+          {S.practice.breadcrumb}
         </nav>
-        <h1 className="display text-[clamp(2rem,4.5vw,3.2rem)]">Práctica dirigida</h1>
+        <h1 className="display text-[clamp(2rem,4.5vw,3.2rem)]">{S.practice.title}</h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed" style={{ color: "var(--muted)" }}>
-          Cada pregunta te devuelve la explicación y por qué falla cada distractor, en el momento. {certName}.
+          {S.practice.sub(certName)}
         </p>
       </header>
 
       <div className="rise mt-10 grid gap-6 lg:grid-cols-[1fr_20rem]" style={{ animationDelay: "80ms" }}>
         <div className="card p-6 sm:p-8">
-          <p className="label">Dominios</p>
+          <p className="label">{S.practice.domainsKicker}</p>
           <div className="mt-4 space-y-1.5">
             {domains.map((d) => {
               const on = selected.includes(d.n);
@@ -158,11 +162,11 @@ function Setup({
 
           <div className="mt-4 flex gap-2">
             <button className="label transition-colors hover:text-[var(--clay)]" onClick={() => setSelected(domains.map((d) => d.n))}>
-              Todos
+              {S.practice.all}
             </button>
             <span style={{ color: "var(--rule)" }}>·</span>
             <button className="label transition-colors hover:text-[var(--clay)]" onClick={() => setSelected([])}>
-              Ninguno
+              {S.practice.none}
             </button>
             <span style={{ color: "var(--rule)" }}>·</span>
             <button
@@ -172,15 +176,15 @@ function Setup({
                   [...domains].sort((a, b) => b.weight - a.weight).slice(0, 3).map((d) => d.n),
                 )
               }
-              title="Los tres dominios que más pesan en el examen"
+              title={S.practice.top3Title}
             >
-              Solo los 3 más pesados
+              {S.practice.top3}
             </button>
           </div>
         </div>
 
         <div className="card h-fit p-6">
-          <p className="label">Filtro</p>
+          <p className="label">{S.practice.filterKicker}</p>
           <div className="mt-3 space-y-1.5">
             {FILTERS.map((f) => (
               <button
@@ -202,10 +206,10 @@ function Setup({
             ))}
           </div>
 
-          <p className="label mt-6">Cuántas preguntas</p>
+          <p className="label mt-6">{S.practice.howMany}</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {[10, 20, 40, pool.length].map((n, i) => {
-              const label = i === 3 ? "Todas" : String(n);
+              const label = i === 3 ? S.practice.allSizeLabel : String(n);
               const active = size === n;
               if (i === 3 && pool.length <= 40) return null;
               return (
@@ -231,7 +235,7 @@ function Setup({
               {Math.min(size, pool.length)}
             </p>
             <p className="label mt-1.5" suppressHydrationWarning>
-              preguntas en esta sesión · de {pool.length} disponibles
+              {S.practice.inSession(pool.length)}
             </p>
             <button
               className="btn mt-5 w-full justify-center"
@@ -239,7 +243,7 @@ function Setup({
               disabled={pool.length === 0}
               suppressHydrationWarning
             >
-              Empezar
+              {S.practice.start}
             </button>
           </div>
         </div>
@@ -249,6 +253,7 @@ function Setup({
 }
 
 export function PracticeClient(props: {
+  lang: Lang;
   cert: string;
   certName: string;
   questions: Question[];
@@ -256,7 +261,7 @@ export function PracticeClient(props: {
 }) {
   return (
     <div className="mx-auto max-w-[64rem] px-5 py-12 sm:px-8">
-      <Suspense fallback={<p className="label">Cargando…</p>}>
+      <Suspense fallback={<p className="label">{t(props.lang).practice.loading}</p>}>
         <Setup {...props} />
       </Suspense>
     </div>

@@ -1,9 +1,11 @@
 "use client";
 
 import { useProgress, accuracy } from "@/lib/progress";
+import { t, type Lang } from "@/lib/i18n";
 
 /** Anillo de precisión del dominio. Silencioso hasta que hay datos que mostrar. */
-export function DomainProgress({ cert, domain }: { cert: string; domain: number }) {
+export function DomainProgress({ lang, cert, domain }: { lang: Lang; cert: string; domain: number }) {
+  const S = t(lang);
   const { progress, ready } = useProgress();
   if (!ready) return <span className="label sm:w-24" />;
 
@@ -13,7 +15,7 @@ export function DomainProgress({ cert, domain }: { cert: string; domain: number 
   if (!acc) {
     return (
       <span className="label whitespace-nowrap sm:w-24 sm:text-right" style={{ color: read ? "var(--clay)" : "var(--muted)" }}>
-        {read ? "✓ Leído" : "Sin datos"}
+        {read ? S.domainProgress.read : S.domainProgress.noData}
       </span>
     );
   }

@@ -1,30 +1,43 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { certs, cert, CERT_META } from "@/lib/content";
+import { certs, cert } from "@/lib/content";
 import { DomainProgress } from "@/components/DomainProgress";
+import { isLang, t, CERT_LEVELS, CERT_FEES, type Lang } from "@/lib/i18n";
 
 export const dynamicParams = false;
-export const generateStaticParams = () => certs().map((c) => ({ code: c.code }));
+export const generateStaticParams = () => certs("es").map((c) => ({ code: c.code }));
 
-export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
-  const { code } = await params;
-  const c = cert(code);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string; code: string }>;
+}): Promise<Metadata> {
+  const { lang, code } = await params;
+  if (!isLang(lang)) return {};
+  const c = cert(lang, code);
   if (!c) return {};
+  const S = t(lang);
   return {
     title: `${c.name} (${c.code})`,
-    description: `Guía completa en español para ${c.name}: ${c.domains.length} dominios, ${c.stats.questions} preguntas de práctica, simulacro con el blueprint oficial. ${c.items} ítems, ${c.minutes} min, corte 720/1000.`,
+    description: S.cert.metaDescription(c.nameEs, c.domains.length, c.stats.questions, c.items, c.minutes),
   };
 }
 
-export default async function CertPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params;
-  const c = cert(code);
+export default async function CertPage({ params }: { params: Promise<{ lang: string; code: string }> }) {
+  const { lang: raw, code } = await params;
+  if (!isLang(raw)) notFound();
+  const lang: Lang = raw;
+  const S = t(lang);
+  const c = cert(lang, code);
   if (!c) notFound();
-  const m = CERT_META[c.code];
   const byWeight = [...c.domains].sort((a, b) => b.weight - a.weight);
   const top3 = byWeight.slice(0, 3);
   const top3Sum = top3.reduce((s, d) => s + d.weight, 0);
+  const [w1, w2, w3] = S.cert.wherePara(
+    top3.map((d) => `D${d.n}`).join(", "),
+    top3Sum.toFixed(1).replace(/\.0$/, ""),
+  );
 
   return (
     <div className="mx-auto max-w-[84rem] px-5 py-14 sm:px-8">
@@ -34,7 +47,7 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
           <span className="label rounded px-2 py-1" style={{ background: "var(--clay-wash)", color: "var(--clay)" }}>
             {c.code}
           </span>
-          <span className="label">{m?.level}</span>
+          <span className="label">{CERT_LEVELS[c.code]}</span>
           <span className="label">v{c.version} · {c.effective}</span>
         </div>
 
@@ -42,7 +55,7 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
         <p className="mt-2 text-lg" lang="en" style={{ color: "var(--muted)" }}>
           {c.name}
         </p>
-        <p className="mt-6 max-w-3xl text-lg leading-relaxed">{m?.tagline}</p>
+        <p className="mt-6 max-w-3xl text-lg leading-relaxed">{S.certTagline[c.code]}</p>
       </header>
 
       {/* ---------- ficha técnica ---------- */}
@@ -51,12 +64,12 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
         style={{ animationDelay: "80ms", borderColor: "var(--rule)" }}
       >
         {[
-          { n: c.items, l: "Ítems" },
-          { n: `${c.minutes}′`, l: "Minutos" },
-          { n: c.passScaled, l: "Corte escalado" },
-          { n: m ? `$${m.feeNum}` : c.fee, l: "Por intento" },
-          { n: `${c.validityMonths}m`, l: "Vigencia" },
-          { n: c.domains.length, l: "Dominios" },
+          { n: String(c.items), l: S.cert.fichaLabels[0] },
+          { n: `${c.minutes}′`, l: S.cert.fichaLabels[1] },
+          { n: String(c.passScaled), l: S.cert.fichaLabels[2] },
+          { n: `$${CERT_FEES[c.code]}`, l: S.cert.fichaLabels[3] },
+          { n: `${c.validityMonths}m`, l: S.cert.fichaLabels[4] },
+          { n: String(c.domains.length), l: S.cert.fichaLabels[5] },
         ].map((x) => (
           <div key={x.l}>
             <dd className="numeral text-[2.2rem]">{x.n}</dd>
@@ -67,38 +80,36 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
 
       {/* ---------- acciones ---------- */}
       <div className="rise mt-8 flex flex-wrap gap-3" style={{ animationDelay: "120ms" }}>
-        <Link href={`/cert/${c.code}/practica`} className="btn no-underline">
-          Practicar · {c.stats.questions} preguntas
+        <Link href={`/${lang}/cert/${c.code}/practica`} className="btn no-underline">
+          {S.cert.practicar(c.stats.questions)}
         </Link>
-        <Link href={`/cert/${c.code}/simulacro`} className="btn btn-ghost no-underline">
-          Simulacro cronometrado
+        <Link href={`/${lang}/cert/${c.code}/simulacro`} className="btn btn-ghost no-underline">
+          {S.cert.simulacro}
         </Link>
-        <Link href={`/cert/${c.code}/decodificador`} className="btn btn-ghost no-underline">
-          Decodificador del examen
+        <Link href={`/${lang}/cert/${c.code}/decodificador`} className="btn btn-ghost no-underline">
+          {S.cert.decodificador}
         </Link>
       </div>
 
       {/* ---------- estrategia: dónde está el examen ---------- */}
       <section className="mt-20">
         <div className="flex items-baseline justify-between gap-4 border-b pb-4" style={{ borderColor: "var(--rule)" }}>
-          <h2 className="display text-[clamp(1.6rem,3vw,2.2rem)]">Dónde está realmente el examen</h2>
-          <p className="label hidden sm:block">Ordenado por peso</p>
+          <h2 className="display text-[clamp(1.6rem,3vw,2.2rem)]">{S.cert.whereTitle}</h2>
+          <p className="label hidden sm:block">{S.cert.whereKicker}</p>
         </div>
 
         <p className="mt-6 max-w-3xl leading-relaxed" style={{ color: "var(--muted)" }}>
-          Tres dominios —{" "}
-          <strong style={{ color: "var(--ink)" }}>
-            {top3.map((d) => `D${d.n}`).join(", ")}
-          </strong>{" "}
-          — concentran el <strong style={{ color: "var(--clay)" }}>{top3Sum.toFixed(1).replace(/\.0$/, "")}%</strong> de los
-          ítems. Si tu tiempo es limitado, ahí es donde rinde cada hora.
+          {w1}
+          <strong style={{ color: "var(--ink)" }}>{top3.map((d) => `D${d.n}`).join(", ")}</strong>
+          {w2.replace(top3Sum.toFixed(1).replace(/\.0$/, ""), top3Sum.toFixed(1).replace(/\.0$/, ""))}
+          {w3}
         </p>
 
         <div className="mt-10 space-y-3">
           {byWeight.map((d, i) => (
             <Link
               key={d.n}
-              href={`/cert/${c.code}/dominio/${d.n}`}
+              href={`/${lang}/cert/${c.code}/dominio/${d.n}`}
               className="card rise group block p-5 no-underline transition-all duration-300 hover:-translate-y-0.5 sm:p-6"
               style={{ animationDelay: `${i * 60}ms` }}
             >
@@ -111,7 +122,7 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
                     {d.weight}
                     <span className="text-[1.2rem]">%</span>
                   </p>
-                  <p className="label">Dominio {d.n}</p>
+                  <p className="label">{S.cert.domainLabel(d.n)}</p>
                 </div>
 
                 <div className="min-w-0">
@@ -120,12 +131,12 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
                     {d.title}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
-                    <span className="label">{d.objectives.length} objetivos oficiales</span>
+                    <span className="label">{S.cert.objectivesCount(d.objectives.length)}</span>
                     <span className="label">
-                      ≈{Math.max(1, Math.round((d.weight / 100) * c.items))} ítems en el examen
+                      {S.cert.examItems(Math.max(1, Math.round((d.weight / 100) * c.items)))}
                     </span>
                     <span className="label">
-                      {c.questions.filter((q) => q.domain === d.n).length} preguntas aquí
+                      {S.cert.questionsHere(c.questions.filter((q) => q.domain === d.n).length)}
                     </span>
                   </div>
                   <div className="mt-3 h-1 w-full max-w-md overflow-hidden rounded-full" style={{ background: "var(--rule)" }}>
@@ -140,7 +151,7 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
                   </div>
                 </div>
 
-                <DomainProgress cert={c.code} domain={d.n} />
+                <DomainProgress lang={lang} cert={c.code} domain={d.n} />
               </div>
             </Link>
           ))}
@@ -151,17 +162,17 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
       <section className="mt-20 grid gap-12 lg:grid-cols-2">
         <div>
           <div className="border-b pb-4" style={{ borderColor: "var(--rule)" }}>
-            <h2 className="display text-[1.8rem]">Para quién es</h2>
+            <h2 className="display text-[1.8rem]">{S.cert.forWhoTitle}</h2>
           </div>
           <p className="mt-5 leading-relaxed">{c.audience}</p>
 
-          <p className="label mt-8">El candidato mínimamente calificado</p>
+          <p className="label mt-8">{S.cert.mqcLabel}</p>
           <p className="mt-2.5 leading-relaxed" style={{ color: "var(--muted)" }}>
             {c.mqc}
           </p>
 
           <p className="label mt-8" style={{ color: "var(--carmin)" }}>
-            Para quién NO es
+            {S.cert.notForLabel}
           </p>
           <p className="mt-2.5 leading-relaxed" style={{ color: "var(--muted)" }}>
             {c.notFor}
@@ -170,15 +181,15 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
 
         <div>
           <div className="border-b pb-4" style={{ borderColor: "var(--rule)" }}>
-            <h2 className="display text-[1.8rem]">Reglas del juego</h2>
+            <h2 className="display text-[1.8rem]">{S.cert.rulesTitle}</h2>
           </div>
           <dl className="mt-5 space-y-5">
             {[
-              ["Puntuación", c.scoring],
-              ["Reintentos", c.retakePolicy],
-              ["Recertificación", c.recertification],
-              ["Prerrequisitos", c.prerequisites],
-              ["Idioma", c.languages],
+              [S.cert.ruleKeys[0], c.scoring],
+              [S.cert.ruleKeys[1], c.retakePolicy],
+              [S.cert.ruleKeys[2], c.recertification],
+              [S.cert.ruleKeys[3], c.prerequisites],
+              [S.cert.ruleKeys[4], c.languages],
             ].map(([k, v]) => (
               <div key={k} className="border-b pb-5 last:border-0" style={{ borderColor: "var(--rule)" }}>
                 <dt className="label" style={{ color: "var(--clay)" }}>
@@ -190,18 +201,18 @@ export default async function CertPage({ params }: { params: Promise<{ code: str
               </div>
             ))}
           </dl>
-          <Link href={`/cert/${c.code}/logistica`} className="btn btn-ghost mt-6 no-underline">
-            Registro, Pearson VUE y día del examen →
+          <Link href={`/${lang}/cert/${c.code}/logistica`} className="btn btn-ghost mt-6 no-underline">
+            {S.cert.logisticsCta}
           </Link>
         </div>
       </section>
 
       {/* ---------- fuentes ---------- */}
       <section className="mt-20 border-t pt-8" style={{ borderColor: "var(--rule)" }}>
-        <p className="label">Fuente</p>
+        <p className="label">{S.cert.sourceLabel}</p>
         <ul className="mt-3 space-y-1.5 text-sm" style={{ color: "var(--muted)" }}>
-          {c.sources.map((s) => (
-            <li key={s}>{s}</li>
+          {c.sources.map((src) => (
+            <li key={src}>{src}</li>
           ))}
         </ul>
       </section>

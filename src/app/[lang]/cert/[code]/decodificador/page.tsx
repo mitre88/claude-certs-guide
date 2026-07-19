@@ -2,24 +2,29 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { certs, cert } from "@/lib/content";
+import { isLang, t, type Lang } from "@/lib/i18n";
 
 export const dynamicParams = false;
-export const generateStaticParams = () => certs().map((c) => ({ code: c.code }));
+export const generateStaticParams = () => certs("es").map((c) => ({ code: c.code }));
 
-export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
-  const { code } = await params;
-  const c = cert(code);
-  return c
-    ? {
-        title: `Decodificador del examen — ${c.code}`,
-        description: `Cómo están construidos los ítems de ${c.name}: el arquetipo de respuesta correcta, los roles de los distractores y la técnica de eliminación.`,
-      }
-    : {};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string; code: string }>;
+}): Promise<Metadata> {
+  const { lang, code } = await params;
+  if (!isLang(lang)) return {};
+  const c = cert(lang, code);
+  const S = t(lang);
+  return c ? { title: S.decoder.metaTitle(c.code), description: S.decoder.metaDescription(c.name) } : {};
 }
 
-export default async function DecoderPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params;
-  const c = cert(code);
+export default async function DecoderPage({ params }: { params: Promise<{ lang: string; code: string }> }) {
+  const { lang: raw, code } = await params;
+  if (!isLang(raw)) notFound();
+  const lang: Lang = raw;
+  const S = t(lang);
+  const c = cert(lang, code);
   if (!c) notFound();
 
   const official = c.questions.filter((q) => q.source === "official");
@@ -27,44 +32,51 @@ export default async function DecoderPage({ params }: { params: Promise<{ code: 
   return (
     <div className="mx-auto max-w-[52rem] px-5 py-12 sm:px-8">
       <nav className="label mb-6">
-        <Link href={`/cert/${c.code}`} className="no-underline hover:text-[var(--clay)]">
+        <Link href={`/${lang}/cert/${c.code}`} className="no-underline hover:text-[var(--clay)]">
           {c.code}
         </Link>
         <span className="mx-2" style={{ color: "var(--rule)" }}>
           /
         </span>
-        Decodificador
+        {S.decoder.breadcrumb}
       </nav>
 
       <header className="rise">
-        <h1 className="display text-[clamp(2.2rem,5vw,3.4rem)]">El decodificador</h1>
+        <h1 className="display text-[clamp(2.2rem,5vw,3.4rem)]">{S.decoder.title}</h1>
         <p className="mt-5 text-lg leading-relaxed" style={{ color: "var(--muted)" }}>
-          Un examen de opción múltiple no es una prueba de memoria: es un artefacto construido con reglas. Estas son las
-          de {c.code}, derivadas de las {official.length} preguntas de ejemplo que Anthropic publicó y del lenguaje del
-          exam guide.
+          {S.decoder.intro(c.code, official.length)}
         </p>
       </header>
+
+      {!c.decoderTranslated && lang !== "es" && (
+        <p
+          className="mt-8 border-l-2 p-3.5 text-sm"
+          style={{ borderColor: "var(--clay)", background: "var(--clay-wash)", color: "var(--muted)" }}
+        >
+          {S.decoder.untranslated}
+        </p>
+      )}
 
       {c.decoderHtml ? (
         <article
           className="prose-study rise mt-12"
           style={{ animationDelay: "80ms" }}
+          lang={c.decoderTranslated ? undefined : "es"}
           dangerouslySetInnerHTML={{ __html: c.decoderHtml }}
         />
       ) : (
         <p className="card mt-12 p-8" style={{ color: "var(--muted)" }}>
-          Aún no publicado.
+          {S.decoder.notYet}
         </p>
       )}
 
       {official.length > 0 && (
         <section className="mt-16">
           <div className="border-b pb-4" style={{ borderColor: "var(--rule)" }}>
-            <h2 className="display text-[1.8rem]">Las preguntas oficiales, diseccionadas</h2>
+            <h2 className="display text-[1.8rem]">{S.decoder.dissectTitle}</h2>
           </div>
           <p className="mt-4 leading-relaxed" style={{ color: "var(--muted)" }}>
-            Estas {official.length} son las únicas preguntas reales que Anthropic ha publicado para este examen. Valen
-            más que cien inventadas: son la muestra de calibración.
+            {S.decoder.dissectPara(official.length)}
           </p>
 
           <div className="mt-8 space-y-5">
@@ -84,7 +96,7 @@ export default async function DecoderPage({ params }: { params: Promise<{ code: 
                         {q.stem}
                       </p>
                       <p className="label mt-3 transition-colors group-open:hidden" style={{ color: "var(--clay)" }}>
-                        Ver disección ↓
+                        {S.decoder.seeDissection}
                       </p>
                     </div>
                   </div>
@@ -117,7 +129,7 @@ export default async function DecoderPage({ params }: { params: Promise<{ code: 
 
                   <div className="pt-4">
                     <p className="label" style={{ color: "var(--verde)" }}>
-                      Justificación oficial
+                      {S.decoder.officialRationale}
                     </p>
                     <p className="mt-2 text-sm leading-relaxed" lang="en" style={{ color: "var(--muted)" }}>
                       {q.officialRationale}
@@ -126,14 +138,14 @@ export default async function DecoderPage({ params }: { params: Promise<{ code: 
 
                   <div className="pt-3">
                     <p className="label" style={{ color: "var(--clay)" }}>
-                      Qué te enseña
+                      {S.decoder.teaches}
                     </p>
                     <p className="mt-2 leading-relaxed">{q.explanationEs}</p>
                   </div>
 
                   {q.trap && (
                     <p className="label pt-3" style={{ color: "var(--clay)" }}>
-                      Trampa: {q.trap}
+                      {S.decoder.trap} {q.trap}
                     </p>
                   )}
                 </div>
@@ -144,11 +156,11 @@ export default async function DecoderPage({ params }: { params: Promise<{ code: 
       )}
 
       <div className="mt-14 flex flex-wrap gap-3">
-        <Link href={`/cert/${c.code}/practica`} className="btn no-underline">
-          Aplicarlo en práctica
+        <Link href={`/${lang}/cert/${c.code}/practica`} className="btn no-underline">
+          {S.decoder.applyPractice}
         </Link>
-        <Link href={`/cert/${c.code}`} className="btn btn-ghost no-underline">
-          Volver a {c.code}
+        <Link href={`/${lang}/cert/${c.code}`} className="btn btn-ghost no-underline">
+          {S.decoder.backTo(c.code)}
         </Link>
       </div>
     </div>
