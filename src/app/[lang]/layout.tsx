@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Newsreader, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Analytics } from "@vercel/analytics/next";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CoffeeBanner } from "@/components/CoffeeBanner";
 import { LangSwitcher } from "@/components/LangSwitcher";
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   if (!isLang(lang)) return {};
   const S = t(lang);
   return {
-    metadataBase: new URL("https://claude-certs-guide.vercel.app"),
+    metadataBase: new URL("https://curso-claude-web.vercel.app"),
     title: { default: S.meta.siteTitle, template: S.meta.template },
     description: S.meta.description,
     alternates: {
@@ -203,6 +204,7 @@ export default async function RootLayout({
             </div>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );

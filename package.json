@@ -11,6 +11,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "marked": "^18.0.6",
     "next": "15.5.20",
     "react": "19.1.0",
